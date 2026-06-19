@@ -10,6 +10,11 @@
 
 ---
 
+## 🚀 Live Demo
+
+🌐 **Live Application:** https://mmu-design-verilog-hdl-1.onrender.com
+---
+
 ## 🎯 Objective
 
 Design and verify a simplified, parameterizable Memory Management
