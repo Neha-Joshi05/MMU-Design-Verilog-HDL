@@ -1,0 +1,6 @@
+*.vcd
+simulation/mmu_sim
+reports/*.json
+reports/mmu_netlist.v
+*.vvp
+.DS_Store

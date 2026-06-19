@@ -1,0 +1,7 @@
+# scripts/synth.ys
+read_verilog rtl/mmu.v
+hierarchy -top mmu
+synth -top mmu
+stat
+write_json reports/mmu_synth.json
+write_verilog reports/mmu_netlist.v

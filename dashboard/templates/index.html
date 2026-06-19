@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MMU Translator Dashboard</title>
+  <style>
+    :root {
+      --bg:     #0d1117;
+      --card:   #161b22;
+      --border: rgba(48,54,61,0.9);
+      --text:   #e6edf3;
+      --muted:  #8b949e;
+      --green:  #3fb950;
+      --yellow: #d29922;
+      --red:    #f85149;
+      --blue:   #58a6ff;
+      --purple: #bc8cff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+    }
+
+    header h1 { font-size: 1.2rem; }
+    header p  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    /* ── Input Form ───────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+
+    .form-group input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: monospace;
+      font-size: 16px;
+      padding: 10px 14px;
+      outline: none;
+    }
+    .form-group input[type="text"]:focus { border-color: var(--blue); }
+
+    .radio-group { display: flex; gap: 16px; margin-top: 6px; }
+    .radio-group label { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text); cursor:pointer; }
+
+    .btn {
+      width: 100%;
+      background: var(--blue);
+      color: #0d1117;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+
+    /* ── Address breakdown ────────────────────── */
+    .breakdown-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .breakdown-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .breakdown-box .label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+    .breakdown-box .value { font-size: 1.3rem; font-weight: 800; font-family: monospace; margin-top: 4px; }
+
+    /* ── Result Banner ────────────────────────── */
+    .result-banner {
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid;
+      text-align: center;
+    }
+
+    .result-success { background: rgba(63,185,80,0.1);  border-color: var(--green); }
+    .result-pagefault { background: rgba(248,81,73,0.1); border-color: var(--red); }
+    .result-protfault { background: rgba(210,153,34,0.12); border-color: var(--yellow); }
+    .result-idle { background: var(--bg); border-color: var(--border); }
+
+    .result-icon { font-size: 2rem; margin-bottom: 8px; }
+    .result-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .result-sub { font-size: 13px; color: var(--muted); }
+    .result-pa { font-size: 2.2rem; font-weight: 800; font-family: monospace; margin-top: 10px; }
+
+    /* ── Page Table ────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(48,54,61,0.5);
+      font-family: monospace;
+    }
+
+    tr.active-row { background: rgba(88,166,255,0.1); }
+    tr.invalid-row { opacity: 0.4; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill-yes { background: rgba(63,185,80,0.15); color: var(--green); }
+    .pill-no  { background: rgba(139,148,158,0.1); color: var(--muted); }
+
+    .formula-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 16px;
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--purple);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🧠 MMU Virtual → Physical Address Translator</h1>
+  <p>Live simulation dashboard powered by the same logic as rtl/mmu.v (Verilog HDL)</p>
+</header>
+
+<main>
+
+  <!-- ── Left: Input Panel ─────────────────────── -->
+  <div class="card">
+    <div class="section-title">Translation Request</div>
+
+    <div class="form-group">
+      <label>Virtual Address (hex, 0x00–0xFF)</label>
+      <input type="text" id="va-input" value="0x03" placeholder="0x03"/>
+    </div>
+
+    <div class="form-group">
+      <label>Access Type</label>
+      <div class="radio-group">
+        <label><input type="radio" name="access" value="read" checked> Read</label>
+        <label><input type="radio" name="access" value="write"> Write</label>
+      </div>
+    </div>
+
+    <button class="btn" onclick="doTranslate()">Translate Address →</button>
+
+    <div class="breakdown-grid">
+      <div class="breakdown-box">
+        <div class="label">Page Number</div>
+        <div class="value" id="bd-page" style="color:var(--blue)">--</div>
+      </div>
+      <div class="breakdown-box">
+        <div class="label">Offset</div>
+        <div class="value" id="bd-offset" style="color:var(--purple)">--</div>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      VA[7:4] = Page Number<br>
+      VA[3:0] = Offset<br>
+      PA = {Frame, Offset}
+    </div>
+  </div>
+
+  <!-- ── Right: Result + Page Table ─────────────── -->
+  <div>
+
+    <!-- Result Banner -->
+    <div class="card result-banner result-idle" id="result-banner" style="margin-bottom:16px;">
+      <div class="result-icon">⏳</div>
+      <div class="result-title">Waiting for translation request</div>
+      <div class="result-sub">Enter a virtual address and click Translate</div>
+    </div>
+
+    <!-- Page Table -->
+    <div class="card">
+      <div class="section-title">Page Table (loaded from rtl/mmu.v initial block)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Page #</th>
+            <th>Frame</th>
+            <th>Valid</th>
+            <th>Read</th>
+            <th>Write</th>
+          </tr>
+        </thead>
+        <tbody id="page-table-body">
+          {% for row in page_table %}
+          <tr id="pte-row-{{ row.page_number }}" class="{{ 'invalid-row' if not row.valid else '' }}">
+            <td>{{ row.page_number }} (0x{{ '%X' % row.page_number }})</td>
+            <td>{{ row.frame }} (0x{{ '%X' % row.frame }})</td>
+            <td><span class="pill {{ 'pill-yes' if row.valid else 'pill-no' }}">{{ 'YES' if row.valid else 'NO' }}</span></td>
+            <td><span class="pill {{ 'pill-yes' if row.read else 'pill-no' }}">{{ 'YES' if row.read else 'NO' }}</span></td>
+            <td><span class="pill {{ 'pill-yes' if row.write else 'pill-no' }}">{{ 'YES' if row.write else 'NO' }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+async function doTranslate() {
+  const vaInput = document.getElementById('va-input').value.trim();
+  const accessType = document.querySelector('input[name="access"]:checked').value;
+
+  const payload = {
+    virtual_addr: vaInput,
+    access_read:  accessType === 'read',
+    access_write: accessType === 'write',
+  };
+
+  try {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    // Update breakdown
+    document.getElementById('bd-page').textContent   = data.page_number + ' (0x' + data.page_number.toString(16).toUpperCase() + ')';
+    document.getElementById('bd-offset').textContent = data.offset_hex;
+
+    // Update result banner
+    const banner = document.getElementById('result-banner');
+    banner.className = 'card result-banner';
+
+    if (data.translation_valid) {
+      banner.classList.add('result-success');
+      banner.innerHTML = `
+        <div class="result-icon">✅</div>
+        <div class="result-title">Translation Successful</div>
+        <div class="result-sub">Virtual ${data.virtual_addr_hex} → Physical Address</div>
+        <div class="result-pa" style="color:var(--green)">${data.physical_addr_hex}</div>
+      `;
+    } else if (data.page_fault) {
+      banner.classList.add('result-pagefault');
+      banner.innerHTML = `
+        <div class="result-icon">🚫</div>
+        <div class="result-title" style="color:var(--red)">PAGE FAULT</div>
+        <div class="result-sub">Page ${data.page_number} is not valid (not mapped in page table)</div>
+      `;
+    } else if (data.protection_fault) {
+      banner.classList.add('result-protfault');
+      banner.innerHTML = `
+        <div class="result-icon">⚠️</div>
+        <div class="result-title" style="color:var(--yellow)">PROTECTION FAULT</div>
+        <div class="result-sub">Access type not permitted by this page's R/W bits</div>
+      `;
+    }
+
+    // Highlight the active page table row
+    document.querySelectorAll('tr[id^="pte-row-"]').forEach(r => r.classList.remove('active-row'));
+    const activeRow = document.getElementById('pte-row-' + data.page_number);
+    if (activeRow) activeRow.classList.add('active-row');
+
+  } catch (e) {
+    console.error(e);
+    alert('Error connecting to server');
+  }
+}
+
+// Run one translation on page load for demo
+window.onload = () => doTranslate();
+</script>
+</body>
+</html>
